@@ -1,0 +1,18 @@
+version: '3'
+services:
+  backend:
+    build:
+      context: ./journal-backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    restart: always
+
+  frontend:
+    build:
+      context: ./journal-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    restart: always
+
