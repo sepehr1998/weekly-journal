@@ -4,6 +4,6 @@ const summaryController = require('../controllers/summaryController');
 
 router.get('/', summaryController.getSummaries);
 router.post('/', summaryController.saveSummary);
-router.post('/generate-summary', summaryController.generateAISummary);
+router.post('/generate-summary', summaryController.generateAndSaveSummary);
 
 module.exports = router;
