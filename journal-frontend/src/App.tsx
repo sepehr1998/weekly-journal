@@ -287,8 +287,8 @@ function App() {
                                 ) : (
                                     <>
                                         <strong className="block mb-1">{entry.date}</strong>
-                                        <p><strong>What I did:</strong> {entry.whatIDid}</p>
-                                        <p><strong>What I learned:</strong> {entry.whatILearned}</p>
+                                        <p className="my-4"><strong>What I did:</strong><br /> {entry.whatIDid}</p>
+                                        <p><strong>What I learned:</strong><br /> {entry.whatILearned}</p>
                                         <div className="mt-2 flex gap-2">
                                             <button
                                                 onClick={() => startEditing(entry)}
