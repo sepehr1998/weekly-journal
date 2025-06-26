@@ -9,8 +9,8 @@ interface Entry {
 }
 
 interface WeekGroup {
-    start: string; // Monday date ISO string
-    end: string;   // Sunday date ISO string
+    start: string;
+    end: string;
     entries: Entry[];
 }
 
@@ -26,14 +26,16 @@ const API_URL = 'http://localhost:3000/api';
 function App() {
     const [entries, setEntries] = useState<Entry[]>([]);
     const [weeks, setWeeks] = useState<WeekGroup[]>([]);
-    const [form, setForm] = useState({ date: '', whatIDid: '', whatILearned: '' });
+    const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], whatIDid: '', whatILearned: '' });
+
+    const [editingEntryId, setEditingEntryId] = useState<number | null>(null);
+    const [editForm, setEditForm] = useState({ date: '', whatIDid: '', whatILearned: '' });
 
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedWeek, setSelectedWeek] = useState<{ start: string; end: string } | null>(null);
     const [summaryText, setSummaryText] = useState('');
     const [loadingSummary, setLoadingSummary] = useState(false);
 
-    // Fetch all entries from backend
     const fetchEntries = async () => {
         try {
             const res = await axios.get(`${API_URL}/entries`);
@@ -43,14 +45,10 @@ function App() {
         }
     };
 
-    // Group entries into weeks (Monday to Sunday)
     const groupEntriesByWeek = (entries: Entry[]) => {
-        // Sort ascending by date
         const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
-
         const groups: WeekGroup[] = [];
 
-        // Helper: get Monday of week for a date
         function getMonday(d: Date) {
             const date = new Date(d);
             const day = date.getDay();
@@ -73,7 +71,6 @@ function App() {
             const sundayStr = sunday.toISOString().split('T')[0];
 
             if (currentWeekStart !== mondayStr) {
-                // Push previous week if exists
                 if (currentEntries.length > 0) {
                     groups.push({
                         start: currentWeekStart,
@@ -81,14 +78,13 @@ function App() {
                         entries: currentEntries,
                     });
                 }
-                // Reset for new week
                 currentWeekStart = mondayStr;
                 currentWeekEnd = sundayStr;
                 currentEntries = [];
             }
             currentEntries.push(entry);
         }
-        // Push last week
+
         if (currentEntries.length > 0) {
             groups.push({
                 start: currentWeekStart,
@@ -108,7 +104,6 @@ function App() {
         groupEntriesByWeek(entries);
     }, [entries]);
 
-    // Form handlers
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
@@ -124,31 +119,55 @@ function App() {
         }
     };
 
-    // Generate summary for a week and store it
+    const handleDeleteEntry = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this entry?')) return;
+        try {
+            await axios.delete(`${API_URL}/entries/${id}`);
+            fetchEntries();
+        } catch (err) {
+            console.error('Failed to delete entry:', err);
+        }
+    };
+
+    const startEditing = (entry: Entry) => {
+        setEditingEntryId(entry.id);
+        setEditForm({ date: entry.date, whatIDid: entry.whatIDid, whatILearned: entry.whatILearned });
+    };
+
+    const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setEditForm({ ...editForm, [e.target.name]: e.target.value });
+    };
+
+    const handleUpdateEntry = async (id: number) => {
+        try {
+            await axios.put(`${API_URL}/entries/${id}`, editForm);
+            setEditingEntryId(null);
+            fetchEntries();
+        } catch (err) {
+            console.error('Failed to update entry:', err);
+        }
+    };
+
     const generateSummary = async (week: { start: string; end: string }) => {
         try {
             const res = await axios.post(`${API_URL}/summaries/generate-summary`, {
                 week_start: week.start,
                 week_end: week.end,
             });
-            const summary = res.data.summary;
-
-            alert(summary);
+            alert(res.data.summary);
         } catch (err) {
             console.error('Error generating summary:', err);
             alert('Failed to generate summary. See console.');
         }
     };
 
-    // Open modal and load summary from DB
     const openSummaryModal = async (week: { start: string; end: string }) => {
         setSelectedWeek(week);
         setModalOpen(true);
         setLoadingSummary(true);
-
         try {
             const res = await axios.get(`${API_URL}/summaries`);
-            const match: Summary | undefined = res.data.find(
+            const match = res.data.find(
                 (s: Summary) => s.week_start === week.start && s.week_end === week.end
             );
             setSummaryText(match ? match.summary : '');
@@ -200,10 +219,7 @@ function App() {
             </form>
 
             {weeks.map((week) => (
-                <div
-                    key={`${week.start}-${week.end}`}
-                    className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow p-6"
-                >
+                <div key={`${week.start}-${week.end}`} className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-semibold">
                             {week.start} → {week.end}
@@ -224,27 +240,77 @@ function App() {
                         </div>
                     </div>
 
-                    {/* Entries list */}
                     <div className="space-y-4">
                         {week.entries.map((entry) => (
                             <div
                                 key={entry.id}
                                 className="border border-gray-300 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-900"
                             >
-                                <strong className="block mb-1">{entry.date}</strong>
-                                <p>
-                                    <strong>What I did:</strong> {entry.whatIDid}
-                                </p>
-                                <p>
-                                    <strong>What I learned:</strong> {entry.whatILearned}
-                                </p>
+                                {editingEntryId === entry.id ? (
+                                    <div className="space-y-2">
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            value={editForm.date}
+                                            onChange={handleEditChange}
+                                            className="w-full p-2 rounded border dark:border-gray-700 bg-white dark:bg-gray-800"
+                                        />
+                                        <textarea
+                                            name="whatIDid"
+                                            value={editForm.whatIDid}
+                                            onChange={handleEditChange}
+                                            rows={2}
+                                            className="w-full p-2 rounded border dark:border-gray-700 bg-white dark:bg-gray-800"
+                                        />
+                                        <textarea
+                                            name="whatILearned"
+                                            value={editForm.whatILearned}
+                                            onChange={handleEditChange}
+                                            rows={2}
+                                            className="w-full p-2 rounded border dark:border-gray-700 bg-white dark:bg-gray-800"
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleUpdateEntry(entry.id)}
+                                                className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                                            >
+                                                Save
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingEntryId(null)}
+                                                className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <strong className="block mb-1">{entry.date}</strong>
+                                        <p><strong>What I did:</strong> {entry.whatIDid}</p>
+                                        <p><strong>What I learned:</strong> {entry.whatILearned}</p>
+                                        <div className="mt-2 flex gap-2">
+                                            <button
+                                                onClick={() => startEditing(entry)}
+                                                className="text-sm text-blue-600 hover:underline"
+                                            >
+                                                ✏️ Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteEntry(entry.id)}
+                                                className="text-sm text-red-600 hover:underline"
+                                            >
+                                                🗑 Delete
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
                 </div>
             ))}
 
-            {/* Summary Modal */}
             {modalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto p-6 relative">
@@ -260,7 +326,6 @@ function App() {
                                 &times;
                             </button>
                         </div>
-
                         {loadingSummary ? (
                             <p className="text-sm text-gray-500">Loading summary...</p>
                         ) : summaryText ? (
