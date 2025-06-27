@@ -41,7 +41,7 @@ exports.generateAISummary = async (req, res) => {
             )
             .join('\n\n');
 
-        const prompt = `You are a helpful assistant. Summarize the following journal entries into a concise weekly summary:\n\n${entriesText}\n\nSummary:`;
+        const prompt = `I'm a senior full-stack developer with 8+ years of experience. Here is what I've done and what I've learned in the past week. Summarize the following journal entries into a pretty long weekly summary. Note that I'm a senior developer and the tone and text should be in a way to shout out that. Try not to miss any important information in your summary:\n\n${entriesText}\n\nSummary:`;
 
         const summary = await openAIService.generateSummary(prompt);
 

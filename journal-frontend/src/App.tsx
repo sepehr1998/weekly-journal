@@ -262,9 +262,9 @@ function App() {
                         </div>
 
                         <div
-                            className={`px-6 overflow-hidden transition-all duration-300 ${
-                                isCollapsed ? 'max-h-0 py-0 opacity-0' : 'max-h-[1000px] py-6 opacity-100'
-                            } space-y-4`}
+                            className={`px-6 transition-all duration-300 space-y-4 ${
+                                isCollapsed ? 'hidden opacity-0' : 'block opacity-100 py-6'
+                            }`}
                         >
                             {week.entries.map((entry) => (
                                 <div
