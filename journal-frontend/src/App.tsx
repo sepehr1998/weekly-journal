@@ -35,6 +35,7 @@ function App() {
     const [selectedWeek, setSelectedWeek] = useState<{ start: string; end: string } | null>(null);
     const [summaryText, setSummaryText] = useState('');
     const [loadingSummary, setLoadingSummary] = useState(false);
+    const [collapsedWeeks, setCollapsedWeeks] = useState<Record<string, boolean>>({});
 
     const fetchEntries = async () => {
         try {
@@ -218,98 +219,131 @@ function App() {
                 </button>
             </form>
 
-            {weeks.map((week) => (
-                <div key={`${week.start}-${week.end}`} className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-2xl font-semibold">
-                            {week.start} → {week.end}
-                        </h2>
-                        <div className="space-x-2">
-                            <button
-                                onClick={() => generateSummary(week)}
-                                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition text-sm"
-                            >
-                                🪄 Generate Summary
-                            </button>
-                            <button
-                                onClick={() => openSummaryModal(week)}
-                                className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition text-sm"
-                            >
-                                📖 Weekly Summary
-                            </button>
+            {weeks.map((week) => {
+                const isCollapsed = collapsedWeeks[week.start] ?? false;
+
+                return (
+                    <div
+                        key={`${week.start}-${week.end}`}
+                        className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow"
+                    >
+                        <div
+                            className="flex justify-between items-center cursor-pointer p-6 border-b border-gray-200 dark:border-gray-700"
+                            onClick={() =>
+                                setCollapsedWeeks((prev) => ({
+                                    ...prev,
+                                    [week.start]: !isCollapsed,
+                                }))
+                            }
+                        >
+                            <h2 className="text-xl font-semibold flex items-center gap-2">
+                                {isCollapsed ? '▶' : '▼'} {week.start} → {week.end}
+                            </h2>
+                            <div className="space-x-2">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        generateSummary(week);
+                                    }}
+                                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition text-sm"
+                                >
+                                    🪄 Generate Summary
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        openSummaryModal(week);
+                                    }}
+                                    className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition text-sm"
+                                >
+                                    📖 Weekly Summary
+                                </button>
+                            </div>
+                        </div>
+
+                        <div
+                            className={`px-6 overflow-hidden transition-all duration-300 ${
+                                isCollapsed ? 'max-h-0 py-0 opacity-0' : 'max-h-[1000px] py-6 opacity-100'
+                            } space-y-4`}
+                        >
+                            {week.entries.map((entry) => (
+                                <div
+                                    key={entry.id}
+                                    className="border border-gray-300 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-900"
+                                >
+                                    {editingEntryId === entry.id ? (
+                                        <div className="space-y-3">
+                                            <input
+                                                type="date"
+                                                name="date"
+                                                value={editForm.date}
+                                                onChange={handleEditChange}
+                                                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none"
+                                            />
+                                            <textarea
+                                                name="whatIDid"
+                                                value={editForm.whatIDid}
+                                                onChange={handleEditChange}
+                                                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 resize-none"
+                                                rows={3}
+                                            />
+                                            <textarea
+                                                name="whatILearned"
+                                                value={editForm.whatILearned}
+                                                onChange={handleEditChange}
+                                                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 resize-none"
+                                                rows={3}
+                                            />
+                                            <div className="space-x-2">
+                                                <button
+                                                    onClick={() => handleUpdateEntry(entry.id)}
+                                                    className="text-sm bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700"
+                                                >
+                                                    💾 Save
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingEntryId(null)}
+                                                    className="text-sm text-gray-600 hover:underline"
+                                                >
+                                                    ❌ Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <strong className="block mb-1">{entry.date}</strong>
+                                            <p>
+                                                <strong className="block">What I did:</strong>
+                                                {entry.whatIDid}
+                                            </p>
+                                            <p>
+                                                <strong className="block">What I learned:</strong>
+                                                {entry.whatILearned}
+                                            </p>
+                                            <div className="mt-4 space-x-2">
+                                                <button
+                                                    onClick={() => startEditing(entry)}
+                                                    className="text-sm text-blue-600 hover:underline"
+                                                >
+                                                    ✏️ Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteEntry(entry.id)}
+                                                    className="text-sm text-red-600 hover:underline"
+                                                >
+                                                    🗑️ Delete
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
+                );
+            })}
 
-                    <div className="space-y-4">
-                        {week.entries.map((entry) => (
-                            <div
-                                key={entry.id}
-                                className="border border-gray-300 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-900"
-                            >
-                                {editingEntryId === entry.id ? (
-                                    <div className="space-y-2">
-                                        <input
-                                            type="date"
-                                            name="date"
-                                            value={editForm.date}
-                                            onChange={handleEditChange}
-                                            className="w-full p-2 rounded border dark:border-gray-700 bg-white dark:bg-gray-800"
-                                        />
-                                        <textarea
-                                            name="whatIDid"
-                                            value={editForm.whatIDid}
-                                            onChange={handleEditChange}
-                                            rows={2}
-                                            className="w-full p-2 rounded border dark:border-gray-700 bg-white dark:bg-gray-800"
-                                        />
-                                        <textarea
-                                            name="whatILearned"
-                                            value={editForm.whatILearned}
-                                            onChange={handleEditChange}
-                                            rows={2}
-                                            className="w-full p-2 rounded border dark:border-gray-700 bg-white dark:bg-gray-800"
-                                        />
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleUpdateEntry(entry.id)}
-                                                className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                                            >
-                                                Save
-                                            </button>
-                                            <button
-                                                onClick={() => setEditingEntryId(null)}
-                                                className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <strong className="block mb-1">{entry.date}</strong>
-                                        <p className="my-4"><strong>What I did:</strong><br /> {entry.whatIDid}</p>
-                                        <p><strong>What I learned:</strong><br /> {entry.whatILearned}</p>
-                                        <div className="mt-2 flex gap-2">
-                                            <button
-                                                onClick={() => startEditing(entry)}
-                                                className="text-sm text-blue-600 hover:underline"
-                                            >
-                                                ✏️ Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteEntry(entry.id)}
-                                                className="text-sm text-red-600 hover:underline"
-                                            >
-                                                🗑 Delete
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ))}
+
 
             {modalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
